@@ -53,10 +53,15 @@ class Parallel{
             window.promisesArr = this.promisesArr;
 
             // получили промис и запускаем последнюю функцию
-            this.returnParallelPromises()
+            this.returnResultPromise()
+			/*.then((results) => {
+			 console.log('returnResultPromise - resultPromise ', window.resultPromise);
+			 console.log('returnResultPromise - this.results: ', this.results);
+			 return results;
+			 })*/
                 .then( (results) => {
-                    this.results = results;
-                    onDoneFunc(this.results);
+                    //this.results = results;
+                    onDoneFunc(results);
                     console.log('results: ', results);
                 });
 
@@ -68,11 +73,15 @@ class Parallel{
      * Handle stepFuncArr to split it into two arrays
      */
     handleStepFuncArr(){
-        //this.stepFuncArr_new = this.stepFuncArr.slice();
-        this.stepFuncArr_sync = this.stepFuncArr.splice(this.parallelJobs);
-        //console.log('this.stepFuncArr_new: ', this.stepFuncArr_new);
-        console.log('this.stepFuncArr: ', this.stepFuncArr);
-        console.log('this.stepFuncArr_sync: ', this.stepFuncArr_sync);
+        if( this.parallelJobs > 1 ){
+            this.stepFuncArr_sync = this.stepFuncArr.splice(this.parallelJobs);
+        }else{
+            this.stepFuncArr_sync = this.stepFuncArr.splice(0);
+        }
+
+
+        console.log('handleStepFuncArr -- this.stepFuncArr: ', this.stepFuncArr);
+        console.log('handleStepFuncArr -- this.stepFuncArr_sync: ', this.stepFuncArr_sync);
     }
 
     /**
@@ -88,7 +97,7 @@ class Parallel{
     makePromiseFromStepFunc(stepFuncItem){
         return new Promise( (resolve, reject) => {
             stepFuncItem((val) => {
-                    console.log('val: ', val);
+                    console.log('makePromiseFromStepFunc -- val: ', val);
                     resolve(val);
                 }
             );
@@ -97,12 +106,65 @@ class Parallel{
     }
 
     /**
+     * Make promise factory from stepFunc
+     */
+    makePromiseFactoryFromStepFunc(stepFuncItem){
+        var results = this.results;
+        return () => {
+            return new Promise( (resolve, reject) => {
+                    stepFuncItem((val) => {
+                        console.log('val from makePromiseFacroty: ', val);
+                        this.results.push(val);
+                        resolve(this.results);
+                    })
+                }
+            )
+        }
+    }
+
+    /**
      * Return result of promises array's parrallel work
      */
     returnParallelPromises(){
         if (this.promisesArr.length > 1){
-            return Promise.all(this.promisesArr);
+            return Promise.all(this.promisesArr)
+                .then( (results) => { console.log('returnParallelPromises -- results: ', results);this.results = results; return this.results});
         }
+    }
+
+    /**
+     * Return result promise
+     */
+    returnResultPromise(){
+        this.stepFuncArr_sync = this.stepFuncArr_sync.map( this.makePromiseFactoryFromStepFunc.bind(this) );
+        console.log('this.stepFuncArr_sync: ', this.stepFuncArr_sync);
+        var resultPromise;
+
+        if( !(this.parallelJobs > 1)  ){
+            resultPromise = this.stepFuncArr_sync.reduce(
+                function(prevPromise, curPromise){
+                    return prevPromise.then(curPromise)
+                },
+                Promise.resolve()
+            );
+            window.resultPromise = resultPromise;
+
+
+        }else{
+            var returnParallelPromises = this.returnParallelPromises.bind(this);
+            console.log('returnParallelPromises: ', returnParallelPromises);
+            resultPromise = this.stepFuncArr_sync.reduce(
+                function(prevPromise, curPromise){
+                    return prevPromise.then(curPromise)
+                },
+                returnParallelPromises()
+            );
+            window.resultPromise = resultPromise;
+
+        }
+
+        //return this.returnParallelPromises();
+        return resultPromise;
     }
 }
 
@@ -112,7 +174,7 @@ class Parallel{
  был заполнен в правильном порядке
  */
 var runner = new Parallel({
-    parallelJobs: 2
+    parallelJobs: 10
 });
 
 runner
@@ -124,22 +186,22 @@ runner
 
 function step1(done) {
     console.log('result - step1');
-    setTimeout(done, 100, 'step1');
+    setTimeout(done, 10000, 'step1');
 }
 
 function step2(done) {
     console.log('result - step2');
-    setTimeout(done, 10, 'step2');
+    setTimeout(done, 1000, 'step2');
 }
 
 function step3(done) {
     console.log('result - step3');
-    setTimeout(done, 150, 'step3');
+    setTimeout(done, 15000, 'step3');
 }
 
 function step4(done) {
     console.log('result - step4');
-    setTimeout(done, 50, 'step4');
+    setTimeout(done, 5000, 'step4');
 }
 
 function onDone(results) {
@@ -153,6 +215,8 @@ function onDone(results) {
 }
 console.log('window.stepFuncArr: ', window.stepFuncArr);
 console.log('window.promisesArr: ', window.promisesArr);
+
+console.log('window.resultPromise: ', window.resultPromise);
 </script>
 </body>
 </html>
