@@ -13,8 +13,7 @@ var runner = new Parallel({
 	parallelJobs: 2
 });
 
-runner
-	.job(step1)
+runner.job(step1)
 	.job(step2)
 	.job(step3)
 	.job(step4)
