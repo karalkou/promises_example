@@ -15,46 +15,144 @@ You free to use any features of ES6 or ES7 if Current version of Google Chrome s
 Do not use any side libraries only native JS.
 */
 
+class Parallel{
+    constructor(options){
+        this.results = [];
+        this.parallelJobs = options.parallelJobs;
+        this.stepFuncArr = [];
+        this.promisesArr = [];
+        this.flag = false;
+    }
+
+    /**
+     * Add elements to stepFunc array and returns context
+     * to have possibility to chain function's calls
+     */
+    job(stepFunc){
+        console.log('from .job -- stepFunc: ', stepFunc);
+
+        // обработку step-функций необх. сделать где-то здесь
+        this.stepFuncArr.push(stepFunc);
+        window.stepFuncArr = this.stepFuncArr;
+
+        return this;
+    }
+
+    /**
+     *
+     */
+    done(onDoneFunc){
+        this.flag = true;
+
+        if(this.flag){
+            console.log('you can do smth with promises');
+
+            this.handleStepFuncArr();
+
+            this.promisesArr = this.createPromisesArr();
+            window.promisesArr = this.promisesArr;
+
+            // получили промис и запускаем последнюю функцию
+            this.returnParallelPromises()
+                .then( (results) => {
+                    this.results = results;
+                    onDoneFunc(this.results);
+                    console.log('results: ', results);
+                });
+
+            this.flag = false;
+        }
+    }
+
+    /**
+     * Handle stepFuncArr to split it into two arrays
+     */
+    handleStepFuncArr(){
+        //this.stepFuncArr_new = this.stepFuncArr.slice();
+        this.stepFuncArr_sync = this.stepFuncArr.splice(this.parallelJobs);
+        //console.log('this.stepFuncArr_new: ', this.stepFuncArr_new);
+        console.log('this.stepFuncArr: ', this.stepFuncArr);
+        console.log('this.stepFuncArr_sync: ', this.stepFuncArr_sync);
+    }
+
+    /**
+     * Create array of promises for Promise.all()
+     */
+    createPromisesArr(){
+        return this.stepFuncArr.map( this.makePromiseFromStepFunc.bind(this) );
+    }
+
+    /**
+     * Make promise out of stepFunc
+     */
+    makePromiseFromStepFunc(stepFuncItem){
+        return new Promise( (resolve, reject) => {
+            stepFuncItem((val) => {
+                    console.log('val: ', val);
+                    resolve(val);
+                }
+            );
+
+        });
+    }
+
+    /**
+     * Return result of promises array's parrallel work
+     */
+    returnParallelPromises(){
+        if (this.promisesArr.length > 1){
+            return Promise.all(this.promisesArr);
+        }
+    }
+}
+
+/*-------------------- Parallel's use --------------------*/
+/* т.е. когда параллельно может работать только часть .job, то
+ остальные вызываются синхронно? Чтобы результирующий массив
+ был заполнен в правильном порядке
+ */
 var runner = new Parallel({
-	parallelJobs: 2
+    parallelJobs: 2
 });
 
 runner
-	.job(step1)
-	.job(step2)
-	.job(step3)
-	.job(step4)
-	.done(onDone);
+    .job(step1)
+    .job(step2)
+    .job(step3)
+    .job(step4)
+    .done(onDone);
 
 function step1(done) {
-	console.log('step1');
-	setTimeout(done, 100, 'step1');
+    console.log('result - step1');
+    setTimeout(done, 100, 'step1');
 }
 
 function step2(done) {
-	console.log('step2');
-	setTimeout(done, 10, 'step2');
+    console.log('result - step2');
+    setTimeout(done, 10, 'step2');
 }
 
 function step3(done) {
-	console.log('step3');
-	setTimeout(done, 150, 'step3');
+    console.log('result - step3');
+    setTimeout(done, 150, 'step3');
 }
 
 function step4(done) {
-	console.log('step4');
-	setTimeout(done, 50, 'step4');
+    console.log('result - step4');
+    setTimeout(done, 50, 'step4');
 }
 
 function onDone(results) {
-	console.log('onDone', results);
-	console.assert(Array.isArray(results), 'result must be an array');
-	console.assert(results.length == 4, 'Wrong count of answers');
-	console.assert(results[0] === 'step1', 'Wrong answer 1');
-	console.assert(results[1] === 'step2', 'Wrong answer 2');
-	console.assert(results[2] === 'step3', 'Wrong answer 3');
-	console.assert(results[3] === 'step4', 'Wrong answer 4');
+    console.log('test - onDone', results);
+    console.assert(Array.isArray(results), 'result must be an array');
+    console.assert(results.length == 4, 'Wrong count of answers');
+    console.assert(results[0] === 'step1', 'Wrong answer 1');
+    console.assert(results[1] === 'step2', 'Wrong answer 2');
+    console.assert(results[2] === 'step3', 'Wrong answer 3');
+    console.assert(results[3] === 'step4', 'Wrong answer 4');
 }
+console.log('window.stepFuncArr: ', window.stepFuncArr);
+console.log('window.promisesArr: ', window.promisesArr);
 </script>
 </body>
 </html>
