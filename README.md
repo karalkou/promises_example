@@ -5,6 +5,9 @@ Try to do it with minimal amount of code and without complex logic
 You free to use any features of ES6 or ES7 if Current version of Google Chrome supporting it.
 Do not use any side libraries only native JS.
 
+example on jsbin:
+https://jsbin.com/jogekoj/edit?html,output
+
 ```javascript
 var runner = new Parallel({
 	parallelJobs: 2
@@ -47,3 +50,4 @@ function onDone(results) {
 	console.assert(results[3] === 'step4', 'Wrong answer 4');
 }
 ```
+

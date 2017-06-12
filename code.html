@@ -29,40 +29,23 @@ class Parallel{
      * to have possibility to chain function's calls
      */
     job(stepFunc){
-        console.log('from .job -- stepFunc: ', stepFunc);
-
-        // обработку step-функций необх. сделать где-то здесь
         this.stepFuncArr.push(stepFunc);
-        window.stepFuncArr = this.stepFuncArr;
-
         return this;
     }
 
     /**
-     *
+     * Start after .job
      */
     done(onDoneFunc){
         this.flag = true;
 
         if(this.flag){
-            console.log('you can do smth with promises');
-
             this.handleStepFuncArr();
-
             this.promisesArr = this.createPromisesArr();
-            window.promisesArr = this.promisesArr;
 
-            // получили промис и запускаем последнюю функцию
             this.returnResultPromise()
-			/*.then((results) => {
-			 console.log('returnResultPromise - resultPromise ', window.resultPromise);
-			 console.log('returnResultPromise - this.results: ', this.results);
-			 return results;
-			 })*/
                 .then( (results) => {
-                    //this.results = results;
                     onDoneFunc(results);
-                    console.log('results: ', results);
                 });
 
             this.flag = false;
@@ -78,10 +61,6 @@ class Parallel{
         }else{
             this.stepFuncArr_sync = this.stepFuncArr.splice(0);
         }
-
-
-        console.log('handleStepFuncArr -- this.stepFuncArr: ', this.stepFuncArr);
-        console.log('handleStepFuncArr -- this.stepFuncArr_sync: ', this.stepFuncArr_sync);
     }
 
     /**
@@ -96,12 +75,7 @@ class Parallel{
      */
     makePromiseFromStepFunc(stepFuncItem){
         return new Promise( (resolve, reject) => {
-            stepFuncItem((val) => {
-                    console.log('makePromiseFromStepFunc -- val: ', val);
-                    resolve(val);
-                }
-            );
-
+            stepFuncItem((val) => { resolve(val); } );
         });
     }
 
@@ -109,11 +83,10 @@ class Parallel{
      * Make promise factory from stepFunc
      */
     makePromiseFactoryFromStepFunc(stepFuncItem){
-        var results = this.results;
+        let results = this.results;
         return () => {
             return new Promise( (resolve, reject) => {
                     stepFuncItem((val) => {
-                        console.log('val from makePromiseFacroty: ', val);
                         this.results.push(val);
                         resolve(this.results);
                     })
@@ -128,7 +101,7 @@ class Parallel{
     returnParallelPromises(){
         if (this.promisesArr.length > 1){
             return Promise.all(this.promisesArr)
-                .then( (results) => { console.log('returnParallelPromises -- results: ', results);this.results = results; return this.results});
+                .then( (results) => { this.results = results; return this.results });
         }
     }
 
@@ -137,8 +110,7 @@ class Parallel{
      */
     returnResultPromise(){
         this.stepFuncArr_sync = this.stepFuncArr_sync.map( this.makePromiseFactoryFromStepFunc.bind(this) );
-        console.log('this.stepFuncArr_sync: ', this.stepFuncArr_sync);
-        var resultPromise;
+        let resultPromise;
 
         if( !(this.parallelJobs > 1)  ){
             resultPromise = this.stepFuncArr_sync.reduce(
@@ -147,65 +119,56 @@ class Parallel{
                 },
                 Promise.resolve()
             );
-            window.resultPromise = resultPromise;
 
 
         }else{
-            var returnParallelPromises = this.returnParallelPromises.bind(this);
-            console.log('returnParallelPromises: ', returnParallelPromises);
+            let returnParallelPromises = this.returnParallelPromises.bind(this);
             resultPromise = this.stepFuncArr_sync.reduce(
                 function(prevPromise, curPromise){
                     return prevPromise.then(curPromise)
                 },
                 returnParallelPromises()
             );
-            window.resultPromise = resultPromise;
 
         }
 
-        //return this.returnParallelPromises();
         return resultPromise;
     }
 }
 
 /*-------------------- Parallel's use --------------------*/
-/* т.е. когда параллельно может работать только часть .job, то
- остальные вызываются синхронно? Чтобы результирующий массив
- был заполнен в правильном порядке
- */
 var runner = new Parallel({
-    parallelJobs: 10
+    parallelJobs: 4
 });
 
-runner
-    .job(step1)
+runner.job(step1)
     .job(step2)
     .job(step3)
     .job(step4)
     .done(onDone);
 
 function step1(done) {
-    console.log('result - step1');
-    setTimeout(done, 10000, 'step1');
+    console.log('step1');
+    setTimeout(done, 100, 'step1');
 }
 
 function step2(done) {
-    console.log('result - step2');
-    setTimeout(done, 1000, 'step2');
+    console.log('step2');
+    setTimeout(done, 10, 'step2');
 }
 
 function step3(done) {
-    console.log('result - step3');
-    setTimeout(done, 15000, 'step3');
+    console.log('step3');
+    setTimeout(done, 150, 'step3');
 }
 
 function step4(done) {
-    console.log('result - step4');
-    setTimeout(done, 5000, 'step4');
+    console.log('step4');
+    setTimeout(done, 50, 'step4');
 }
 
 function onDone(results) {
-    console.log('test - onDone', results);
+    console.log('onDone', results);
     console.assert(Array.isArray(results), 'result must be an array');
     console.assert(results.length == 4, 'Wrong count of answers');
     console.assert(results[0] === 'step1', 'Wrong answer 1');
@@ -213,10 +176,6 @@ function onDone(results) {
     console.assert(results[2] === 'step3', 'Wrong answer 3');
     console.assert(results[3] === 'step4', 'Wrong answer 4');
 }
-console.log('window.stepFuncArr: ', window.stepFuncArr);
-console.log('window.promisesArr: ', window.promisesArr);
-
-console.log('window.resultPromise: ', window.resultPromise);
 </script>
 </body>
 </html>
